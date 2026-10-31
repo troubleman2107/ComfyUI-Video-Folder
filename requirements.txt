@@ -1,0 +1,2 @@
+# No additional dependencies. Uses the native VIDEO API supplied by ComfyUI.
+# Do not install or upgrade NumPy, PyTorch, OpenCV, or codec packages for this node.
