@@ -154,10 +154,13 @@ def test_native_video_boundary_and_output_lists_align(tmp_path, monkeypatch):
             opened.append(path)
         def get_dimensions(self):
             return 64, 48
+        def get_components(self):
+            from types import SimpleNamespace
+            return SimpleNamespace(images=object(), audio=None, frame_rate=24)
     monkeypatch.setattr(video_folder, '_video_class', lambda: Video)
     put(tmp_path, 'clip1.mp4', 'clip2.mp4')
     result = LoadVideosFromFolder().load(str(tmp_path), batch_size=0)
-    videos, filenames, paths, indices, totals, available = result
+    videos, filenames, paths, indices, totals, available = result[:6]
     assert [v.path for v in videos] == paths == opened
     assert filenames == ['clip1__mp4', 'clip2__mp4']
     assert indices == [1,2] and totals == [2,2] and available == [2,2]
@@ -210,10 +213,14 @@ def test_package_registration_and_workflow_links():
         assert name_link[1:3] == [source['id'], 1]
         if 'watermark' in path.name:
             create = next(n for n in nodes.values() if n['type'] == 'CreateVideo')
-            for input_name, slot in [('audio',1),('fps',2)]:
+            for input_name, slot in [('audio',7),('fps',8)]:
                 inlet = next(i for i in create['inputs'] if i['name'] == input_name)
                 link = next(l for l in data['links'] if l[0] == inlet['link'])
-                assert nodes[link[1]]['type'] == 'GetVideoComponents' and link[2] == slot
+                assert nodes[link[1]]['type'] == 'TM_LoadVideosFromFolder' and link[2] == slot
+            watermark = next(n for n in nodes.values() if n['type'] == 'TextWatermark')
+            image_link = next(l for l in data['links'] if l[0] == watermark['inputs'][0]['link'])
+            assert image_link[1:3] == [source['id'], 6]
+            assert image_link[-1] == 'IMAGE'
 
 
 def test_skip_done_reads_each_output_directory_once(tmp_path, monkeypatch):
@@ -242,3 +249,39 @@ def test_skip_done_does_not_conflate_case_sensitive_prefixes(tmp_path):
     put(source, 'clip.mp4')
     put(done, 'Clip__mp4_00001_.mp4')
     assert names(selected(source, skip_done=True, output_folder=str(done))) == ['clip.mp4']
+
+
+def test_image_audio_fps_outputs_match_each_video(tmp_path, monkeypatch):
+    from fractions import Fraction
+    from types import SimpleNamespace
+    import video_folder
+    first_frames, second_frames, soundtrack = object(), object(), object()
+    components = {
+        '1.mp4': SimpleNamespace(images=first_frames, audio=soundtrack, frame_rate=Fraction(30000,1001)),
+        '2.mp4': SimpleNamespace(images=second_frames, audio=None, frame_rate=Fraction(24)),
+    }
+    class Video:
+        def __init__(self, path): self.path = path
+        def get_dimensions(self): return 64, 48
+        def get_components(self): return components[Path(self.path).name]
+    monkeypatch.setattr(video_folder, '_video_class', lambda: Video)
+    put(tmp_path, '1.mp4', '2.mp4')
+    result = LoadVideosFromFolder().load(str(tmp_path), batch_size=0)
+    ports = dict(zip(LoadVideosFromFolder.RETURN_NAMES, result))
+    assert ports['images'] == [first_frames, second_frames]
+    assert ports['audio'] == [soundtrack, None]
+    assert ports['fps'] == pytest.approx([30000/1001,24])
+    assert LoadVideosFromFolder.RETURN_TYPES[6:] == ('IMAGE','AUDIO','FLOAT')
+    assert all(len(values) == 2 for values in result)
+
+
+def test_decode_failure_reports_source_filename(tmp_path, monkeypatch):
+    import video_folder
+    class Video:
+        def __init__(self, path): pass
+        def get_dimensions(self): return 64, 48
+        def get_components(self): raise RuntimeError('bad frame')
+    monkeypatch.setattr(video_folder, '_video_class', lambda: Video)
+    put(tmp_path, 'broken.mp4')
+    with pytest.raises(ValueError, match='broken.mp4'):
+        LoadVideosFromFolder().load(str(tmp_path))

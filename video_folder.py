@@ -187,12 +187,14 @@ def _video_class():
 class LoadVideosFromFolder:
     CATEGORY = 'video/batch'
     FUNCTION = 'load'
-    RETURN_TYPES = ('VIDEO', 'STRING', 'STRING', 'INT', 'INT', 'INT')
-    RETURN_NAMES = ('video', 'filename', 'path', 'index', 'total', 'available')
-    OUTPUT_IS_LIST = (True,) * 6
+    # Append ports so existing workflow links keep their original slot indices.
+    RETURN_TYPES = ('VIDEO', 'STRING', 'STRING', 'INT', 'INT', 'INT', 'IMAGE', 'AUDIO', 'FLOAT')
+    RETURN_NAMES = ('video', 'filename', 'path', 'index', 'total', 'available', 'images', 'audio', 'fps')
+    OUTPUT_IS_LIST = (True,) * 9
     DESCRIPTION = ('Load separate video files as a ComfyUI list, preserving native audio/FPS. '
                    'batch_size counts FILES, not frames; 0 loads all remaining files. '
-                   'Keep Queue batch count at 1. Start with batch_size=1 for large videos.')
+                   'Connect images directly to Text Watermark. Frames are decoded for all selected files; '
+                   'keep Queue batch count at 1 and start with batch_size=1 for large videos.')
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -214,21 +216,26 @@ class LoadVideosFromFolder:
         selection = select_videos(folder, recursive, sort_by, descending,
                                   start_index, batch_size, selected_files, skip_done, output_folder)
         video_type = _video_class()
-        videos = []
+        videos, images, audio, fps = [], [], [], []
         for entry in selection.entries:
             try:
                 video = video_type(str(entry.path))
                 width, height = video.get_dimensions()
                 if width < 1 or height < 1:
                     raise ValueError('Video has no valid dimensions.')
+                components = video.get_components()
+                frame_rate = float(components.frame_rate)
             except Exception as exc:
                 raise ValueError(f'Cannot open video {entry.relative!r}: {exc}') from exc
             videos.append(video)
+            images.append(components.images)
+            audio.append(components.audio)
+            fps.append(frame_rate)
         count = len(videos)
         return (videos, [e.filename for e in selection.entries],
                 [str(e.path) for e in selection.entries],
                 list(range(start_index + 1, start_index + count + 1)),
-                [count] * count, [selection.available] * count)
+                [count] * count, [selection.available] * count, images, audio, fps)
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

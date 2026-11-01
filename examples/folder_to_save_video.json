@@ -63,6 +63,27 @@
           "links": [],
           "slot_index": 5,
           "shape": 6
+        },
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [],
+          "slot_index": 6,
+          "shape": 6
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [],
+          "slot_index": 7,
+          "shape": 6
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": [],
+          "slot_index": 8,
+          "shape": 6
         }
       ],
       "properties": {

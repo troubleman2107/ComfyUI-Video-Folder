@@ -1,7 +1,8 @@
 # ComfyUI Video Folder
 
 **Load Videos from Folder (Batch)** đọc nhiều **file video** trong một thư mục,
-đưa từng video vào workflow dưới dạng danh sách `VIDEO` của ComfyUI.
+xuất cả `VIDEO` và batch khung hình `IMAGE` cho từng video. Cổng `images` nối
+trực tiếp vào **Text Watermark (Image & Video)** hoặc các node nhận IMAGE.
 
 Package độc lập, lấy cảm hứng từ cách xử lý danh sách của
 [Load Images from Folder Pixaroma](https://github.com/pixaroma/ComfyUI-Pixaroma/blob/main/nodes/node_load_images_folder.py).
@@ -101,6 +102,9 @@ Tất cả cổng xuất danh sách cùng độ dài để các giá trị luôn
 | `index` | Chỉ số 1-based trong danh sách sau chọn/lọc, có tính start_index |
 | `total` | Số video trong batch hiện tại, lặp cho từng phần tử |
 | `available` | Số video sau chọn/lọc/bỏ qua kết quả, trước khi cắt batch |
+| `images` | IMAGE: toàn bộ khung hình của từng video, nối trực tiếp vào Text Watermark |
+| `audio` | Âm thanh tương ứng; None nếu video không có âm thanh |
+| `fps` | FPS tương ứng, giữ phần thập phân như 29.97 |
 
 `filename` giữ thư mục con và thêm phần mở rộng nguồn để tránh trùng tên:
 `sub/clip.mp4 → sub/clip__mp4`; `clip.mov → clip__mov`.
@@ -128,24 +132,30 @@ Cài thêm [ComfyUI-Watermask](https://github.com/troubleman2107/ComfyUI-Waterma
 để có **Text Watermark (Image & Video)**:
 
 ```text
-Load Videos from Folder.video → Get Video Components
-                                  ├─ images → Text Watermark → Create Video.images
-                                  ├─ audio ──────────────────→ Create Video.audio
-                                  └─ fps ────────────────────→ Create Video.fps
-                                                               ↓
-Load Videos from Folder.filename ───────────────────────────→ Save Video.filename_prefix
-Create Video.VIDEO ─────────────────────────────────────────→ Save Video.video
+Load Videos from Folder.images → Text Watermark.images
+Text Watermark.images ─────────→ Create Video.images
+Load Videos from Folder.audio ─→ Create Video.audio
+Load Videos from Folder.fps ───→ Create Video.fps
+Create Video.VIDEO ────────────→ Save Video.video
+Load Videos from Folder.filename → Save Video.filename_prefix
 ```
 
-Ảnh/frame, audio và FPS của từng video được xử lý theo cùng vị trí trong danh sách.
-Giữ các nhánh audio/fps trong workflow mẫu để tránh mất tiếng hoặc sai tốc độ.
-Workflow watermark này dành cho SDR. Nó không tự quản lý chuyển màu HDR.
+Không nối cổng `video` vào Text Watermark: hãy chọn cổng **images** ở cuối node.
+Không cần Get Video Components với workflow mới. Ảnh/frame, audio và FPS của
+mỗi video được giữ ở cùng vị trí trong danh sách. Video không có âm thanh xuất
+`audio=None`; Create Video hỗ trợ đầu vào audio tùy chọn này.
+Workflow watermark mẫu dành cho SDR, không tự quản lý chuyển màu HDR.
+
+**Sau khi cập nhật:** restart ComfyUI, tải lại trang bằng Ctrl+F5. Nếu node cũ
+chưa hiện cổng mới, lưu lại thiết lập rồi xóa và thêm lại Load Videos from Folder,
+hoặc kéo file `examples/folder_watermark.json` mới vào canvas. Sáu cổng cũ vẫn giữ
+thứ tự để workflow trước đây không bị đổi dây nối. Các cổng mới nằm sau `available`.
 
 ### Với VideoHelperSuite (VHS)
 
 Cổng `VIDEO` native không nối trực tiếp vào `IMAGE` của VHS. Có hai cách:
 
-- Dùng Get Video Components lấy images/audio/fps rồi nối vào các node nhận tương ứng.
+- Nối trực tiếp các cổng images/audio/fps mới vào các node VHS nhận kiểu tương ứng.
 - Nối `path` vào cổng đường dẫn của Load Video (Path) VHS. Chuyển widget đường dẫn
   sang input nếu cần. Bản VHS khác nhau có thể đặt tên input khác nhau.
 
@@ -167,8 +177,8 @@ của file đã lưu. Nếu tất cả đã xử lý, node báo rõ và dừng, 
 ## Giới hạn và cách xử lý lỗi
 
 - **Batch theo file**, không phải cắt một video dài thành từng nhóm frame.
-- Node chỉ tạo tham chiếu VIDEO và đọc kích thước để kiểm tra file. Tuy nhiên,
-  ComfyUI có thể giữ toàn bộ các batch frame ở node giải mã phía sau. Không đảm bảo
+- Node giải mã toàn bộ frame và âm thanh của các video đã chọn ngay khi chạy,
+  kể cả khi chỉ dùng cổng VIDEO. Các batch frame có thể được giữ đồng thời trong RAM. Không đảm bảo
   hoàn tất toàn bộ workflow của video 1 trước khi giải mã video 2. Với video dài,
   dùng batch_size=1 hoặc chia batch khung hình bằng công cụ chuyên dụng như VHS.
 - Node không có vòng lặp tự queue; không có giao diện xem trước/chọn thumbnail.

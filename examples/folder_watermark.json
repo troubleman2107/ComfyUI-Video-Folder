@@ -11,7 +11,7 @@
       ],
       "size": [
         380,
-        410
+        450
       ],
       "flags": {},
       "order": 0,
@@ -21,9 +21,7 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "links": [
-            1
-          ],
+          "links": [],
           "slot_index": 0,
           "shape": 6
         },
@@ -63,6 +61,33 @@
           "links": [],
           "slot_index": 5,
           "shape": 6
+        },
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 6,
+          "shape": 6
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            4
+          ],
+          "slot_index": 7,
+          "shape": 6
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": [
+            5
+          ],
+          "slot_index": 8,
+          "shape": 6
         }
       ],
       "properties": {
@@ -79,70 +104,6 @@
         false,
         ""
       ]
-    },
-    {
-      "id": 2,
-      "type": "GetVideoComponents",
-      "pos": [
-        400,
-        0
-      ],
-      "size": [
-        330,
-        160
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "video",
-          "type": "VIDEO",
-          "link": 1
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": [
-            2
-          ],
-          "slot_index": 0
-        },
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            4
-          ],
-          "slot_index": 1
-        },
-        {
-          "name": "fps",
-          "type": "FLOAT",
-          "links": [
-            5
-          ],
-          "slot_index": 2
-        },
-        {
-          "name": "bit_depth",
-          "type": "COMBO",
-          "links": [],
-          "slot_index": 3
-        },
-        {
-          "name": "color_space",
-          "type": "COMBO",
-          "links": [],
-          "slot_index": 4
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "GetVideoComponents"
-      },
-      "widgets_values": []
     },
     {
       "id": 3,
@@ -303,17 +264,9 @@
   ],
   "links": [
     [
+      2,
       1,
-      1,
-      0,
-      2,
-      0,
-      "VIDEO"
-    ],
-    [
-      2,
-      2,
-      0,
+      6,
       3,
       0,
       "IMAGE"
@@ -328,16 +281,16 @@
     ],
     [
       4,
-      2,
       1,
+      7,
       4,
       1,
       "AUDIO"
     ],
     [
       5,
-      2,
-      2,
+      1,
+      8,
       4,
       2,
       "FLOAT"
